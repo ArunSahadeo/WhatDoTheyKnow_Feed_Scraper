@@ -31,4 +31,3 @@ jobs:
           git add snapshots/*.csv
           git commit -m "Daily snapshot" || echo "No changes"
           git push
-
