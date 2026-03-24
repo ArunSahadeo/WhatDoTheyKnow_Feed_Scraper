@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run scraper
-        run: python -m scraper.build_snapshot
+        run: python -u -m scraper.build_snapshot
 
       - name: Commit results
         run: |
