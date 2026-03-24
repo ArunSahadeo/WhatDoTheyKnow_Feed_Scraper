@@ -4,4 +4,3 @@ RSS_FEEDS = {
     "unsuccessful": "https://www.whatdotheyknow.com/feed/search/%20(latest_status:rejected%20OR%20latest_status:not_held)",
     "unresolved": "https://www.whatdotheyknow.com/feed/search/%20(latest_status:waiting_response%20OR%20latest_status:waiting_clarification%20OR%20waiting_classification:true%20OR%20latest_status:internal_review%20OR%20latest_status:gone_postal%20OR%20latest_status:error_message%20OR%20latest_status:requires_admin)"
 }
-
