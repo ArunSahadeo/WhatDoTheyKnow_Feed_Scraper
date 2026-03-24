@@ -19,6 +19,8 @@ def build_snapshot():
     for category, url in RSS_FEEDS.items():
         entries = fetch_rss_entries(url)
 
+        print(f"The length of entries: {len(entries)}")
+
         for e in entries:
             request_url = None
             title = e.title
