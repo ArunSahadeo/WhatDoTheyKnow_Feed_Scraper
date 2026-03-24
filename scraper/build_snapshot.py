@@ -1,10 +1,12 @@
 import csv
 import datetime
+import os
 from scraper.rss_feeds import RSS_FEEDS
 from scraper.fetch_rss import fetch_rss_entries
 from scraper.parse_request_page import scrape_request_page
 
 def build_snapshot():
+    os.makedirs("snapshots", exist_ok=True)
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d")
     filename = f"snapshots/foi_snapshot_{timestamp}.csv"
 
@@ -40,3 +42,5 @@ def build_snapshot():
 
     print(f"Snapshot written: {filename}")
 
+if __name__ == "__main__":
+    build_snapshot()
