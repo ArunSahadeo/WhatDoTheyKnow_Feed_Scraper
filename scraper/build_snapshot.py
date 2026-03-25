@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from scraper.rss_feeds import RSS_FEEDS
 from scraper.fetch_rss import fetch_rss_entries
 from scraper.parse_request_page import scrape_request_page
-from scraper.internet_archive import snapshot_url
+from time import sleep
 
 def build_snapshot():
     os.makedirs("snapshots", exist_ok=True)
@@ -20,28 +20,18 @@ def build_snapshot():
     rows = []
 
     # RSS_FEEDS is expected to be a dict: {category: feed_url}
-    for category, url in RSS_FEEDS.items():
-        print(f"[SNAPSHOT] Category: {category}")
-        print(f"[SNAPSHOT] Live feed URL: {url}")
+    for index, category, url in enumerate(RSS_FEEDS.items()):
+        if index > 0:
+            sleep(5)
 
-        # 1. Try live feed first
         entries = fetch_rss_entries(url)
 
-        # 2. If live feed fails → fallback to IA snapshot
         if len(entries) == 0:
-            print("[SNAPSHOT] Live feed returned 0 entries. Falling back to IA snapshot...")
-            ia_feed_url = snapshot_url(url, sleep_seconds=2.0)
-            print(f"[SNAPSHOT] IA feed URL: {ia_feed_url}")
-            entries = fetch_rss_entries(ia_feed_url)
-
-        # 3. If still empty, skip category
-        if len(entries) == 0:
-            print("[SNAPSHOT] ERROR: Both live and IA feed returned 0 entries. Skipping category.")
+            print(f"No entries for {url}. Skipping.")
             continue
 
         for e in entries:
-            request_url = snapshot_url(e.link, sleep_seconds=2.0)
-            print(f"[SNAPSHOT] Request URL (as stored by IA): {request_url}")
+            request_url = e.link
             details = scrape_request_page(request_url)
 
             rows.append(
