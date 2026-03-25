@@ -1,60 +1,104 @@
 import requests
 from bs4 import BeautifulSoup
+import os
+import re
+import json
+import base64
 
-def scrape_request_page(url):
-    r = requests.get(url)
-    print(f"The resolved URL and status code: {r.url}, {r.status_code}")
-    soup = BeautifulSoup(r.text, "html.parser")
+def scrape_request_page(url, html):
+    url = re.sub(r'#(?:incoming|outgoing)-\d+$', '', url)
+    soup = BeautifulSoup(html, "html.parser")
+    submitter = None
+    authority = None
+    status = None
+    messages = []
+    attachments = []
 
     # Submitter
-    submitter = soup.select(".request-header__action-bar-container .request-header__subtitle a:first-child")
-    submitter = submitter.text.strip() if submitter else None
+
+    try:
+        submitter = soup.select_one(".request-header__action-bar-container .request-header__subtitle a:first-of-type")
+        submitter = submitter.text.strip() if submitter else None
+    except:
+        pass
 
     # Authority
-    authority = soup.select(".request-header__action-bar-container .request-header__subtitle a:last-child")
-    authority = authority.text.strip() if authority else None
 
-    valid_statuses = [
-        'waiting_response',
-        'not_held',
-        'rejected',
-        'partially_successful',
-        'successful',
-        'waiting_clarification',
-        'gone_postal',
-        'internal_review',
-        'error_message',
-        'requires_admin',
-        'user_withdrawn'
-    ]
+    try:
+        authority = soup.select_one(".request-header__action-bar-container .request-header__subtitle a:last-of-type")
+        authority = authority.text.strip() if authority else None
+    except:
+        pass
 
     # Status
-    status = soup.select_one("#request_status").get("class").split('request-status-message--')[1]
 
-    if status not in valid_statuses:
-        print(f"The invalid status: {status}")
-        status = None
+    try:
+        status = soup.select_one("#request_status").get("class")[1].split('request-status-message--')[1]
+    except:
+        pass
 
     # Last message (resolution)
-    messages = soup.select(".correspondence")
-    resolution_text = None
-    if messages:
-        last_msg = messages[-1]
-        resolution_text = last_msg.get_text(separator="\n").strip()
+
+    try:
+        correspondence_items = soup.select(".correspondence")
+
+        if correspondence_items:
+            for message in correspondence_items:
+                author = message.select_one("div.correspondence__header > span").get_text().replace('\n', '').strip()
+                author = re.sub(r'\s{2,}', ' ', author)
+                published = message.select_one(".correspondence__header__date > time").get("datetime")
+                message_type = "outgoing" if "outgoing" in message["class"] else "incoming"
+
+                content = base64.b64encode(message.select_one('.correspondence_text').get_text(separator="\n").strip().encode())
+                messages.append({"author": author, "published": published, "message_type": message_type, "content": content})
+    except:
+        pass
 
     # Attachments
-    attachments = []
-    for attachment in soup.select(".attachment"):
-        attachment_item_title = attachment.select(".attachment__name").text.strip()
-        attachment_item_url = attachment.select_one(".attachment__meta a").get("href")
 
-        if attachment_item_title and attachment_item_title_url:
-            attachments.append({"title": attachment_item_title, "url": "https://www.whatdotheyknow.com" + attachment_item_url})
+    try:
+        for attachment in soup.select(".attachment"):
+            attachment_item_title = attachment.select_one(".attachment__name").text.strip()
+            attachment_item_url = attachment.select_one(".attachment__meta a").get("href")
+
+            if attachment_item_title and attachment_item_url:
+                attachments.append({"title": attachment_item_title, "url": "https://www.whatdotheyknow.com" + attachment_item_url})
+    except:
+        pass
+
+    if submitter is None or authority is None or status is None or not messages:
+            import datetime
+            os.makedirs("errors", exist_ok=True)
+
+            try:
+                request_slug = url.split('/request/')[1]
+            except:
+                request_slug = None
+
+            if request_slug is not None:
+                timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+                filename = f"errors/{request_slug}_{timestamp}.html"
+
+                if submitter is None:
+                    print(f"Submitter not set for {request_slug}")
+
+                if authority is None:
+                    print(f"Authority not set for {request_slug}")
+
+                if status is None:
+                    print(f"Status not set for {request_slug}")
+
+                if not messages:
+                    print(f"Correspondence not set for {request_slug}")
+
+                f = open(filename, "w", encoding="utf-8")
+                f.write(html)
+                f.close()
 
     return {
         "submitter": submitter,
         "authority": authority,
         "status": status,
-        "resolution_text": resolution_text,
+        "messages": messages,
         "attachments": attachments
     }

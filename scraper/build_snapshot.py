@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from scraper.rss_feeds import RSS_FEEDS
 from scraper.fetch_rss import fetch_rss_entries
 from scraper.parse_request_page import scrape_request_page
+from scraper.browser import Browser
 from time import sleep
 
 def build_snapshot():
@@ -20,8 +21,8 @@ def build_snapshot():
     rows = []
 
     # RSS_FEEDS is expected to be a dict: {category: feed_url}
-    for index, category, url in enumerate(RSS_FEEDS.items()):
-        if index > 0:
+    for category, url in RSS_FEEDS.items():
+        if 'all' not in category:
             sleep(5)
 
         entries = fetch_rss_entries(url)
@@ -32,7 +33,11 @@ def build_snapshot():
 
         for e in entries:
             request_url = e.link
-            details = scrape_request_page(request_url)
+            title = e.title
+            published = e.published
+            r = Browser(request_url)
+            request_url = r.final_url
+            details = scrape_request_page(request_url, r.html)
 
             rows.append(
                 {
@@ -53,7 +58,7 @@ def build_snapshot():
         "submitter",
         "authority",
         "status",
-        "resolution_text",
+        "messages",
         "attachments",
     ]
 
