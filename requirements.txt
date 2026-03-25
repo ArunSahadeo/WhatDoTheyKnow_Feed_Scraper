@@ -2,3 +2,4 @@ feedparser
 beautifulsoup4
 PyQt6
 PyQt6-WebEngine
+requests
