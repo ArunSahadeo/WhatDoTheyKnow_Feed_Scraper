@@ -32,8 +32,8 @@ def build_snapshot():
         if len(entries) == 0:
             print("[SNAPSHOT] Live feed returned 0 entries. Falling back to IA snapshot...")
             ia_feed_url = snapshot_url(url, sleep_seconds=2.0)
-            print(f"[SNAPSHOT] IA feed URL: {ia_url}")
-            entries = fetch_rss_entries(ia_url)
+            print(f"[SNAPSHOT] IA feed URL: {ia_feed_url}")
+            entries = fetch_rss_entries(ia_feed_url)
 
         # 3. If still empty, skip category
         if len(entries) == 0:

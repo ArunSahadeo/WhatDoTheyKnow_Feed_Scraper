@@ -11,57 +11,57 @@ def _timestamp_suffix() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 def _with_ia_ts(url: str) -> str:
-    """
-    Append a harmless timestamp query parameter so IA treats each run
-    as a distinct capture request, avoiding deduplication.
-    """
+    """Append a timestamp param so IA treats each run as a new capture."""
     ts = _timestamp_suffix()
     return f"{url}&ia_ts={ts}" if "?" in url else f"{url}?ia_ts={ts}"
 
-def snapshot_url(live_url: str, sleep_seconds: float = 0.0) -> str:
+def snapshot_url(live_url: str, retries: int = 3, sleep_seconds: float = 2.0) -> str:
     """
-    Send the live URL to Internet Archive's Save Page Now endpoint and
-    return the resulting snapshot URL (https://web.archive.org/...).
-
-    If anything goes wrong, this function falls back to returning the
-    original live_url so the rest of the pipeline can still run.
-
-    This does NOT fetch the snapshot content; it only returns the URL.
+    Send the live URL to Internet Archive Save Page Now and return
+    the resulting snapshot URL. Retries on timeout. If IA fails,
+    return the original live URL.
     """
     target = _with_ia_ts(live_url)
     save_url = SAVE_PAGE_NOW_ENDPOINT + target
 
-    print(f"[IA] Requesting snapshot for: {live_url}")
-    print(f"[IA] Save Page Now URL:      {save_url}")
+    for attempt in range(1, retries + 1):
+        print(f"[IA] Attempt {attempt}/{retries} for: {live_url}")
+        print(f"[IA] Save Page Now URL:      {save_url}")
 
-    try:
-        # We don't want to follow redirects here; we want the headers.
-        resp = requests.get(save_url, timeout=60, allow_redirects=False)
-    except Exception as e:
-        print(f"[IA] Error calling Save Page Now: {e}")
-        print("[IA] Falling back to live URL.")
-        return live_url
+        try:
+            resp = requests.get(
+                save_url,
+                timeout=180,            # IA is slow - give it time
+                allow_redirects=False
+            )
+        except Exception as e:
+            print(f"[IA] Error: {e}")
+            if attempt < retries:
+                print("[IA] Retrying...")
+                time.sleep(3)
+                continue
+            print("[IA] All retries failed. Falling back to live URL.")
+            return live_url
 
-    print(f"[IA] Response status: {resp.status_code}")
+        snapshot_path: Optional[str] = (
+            resp.headers.get("Content-Location")
+            or resp.headers.get("Location")
+        )
 
-    # IA usually returns a Content-Location header like:
-    #   /web/20260325010101/https://www.whatdotheyknow.com/...
-    snapshot_path: Optional[str] = resp.headers.get("Content-Location")
+        if snapshot_path:
+            if snapshot_path.startswith("http"):
+                snapshot = snapshot_path
+            else:
+                snapshot = WEB_ARCHIVE_ROOT + snapshot_path
 
-    if not snapshot_path:
-        # Sometimes Location is used instead.
-        snapshot_path = resp.headers.get("Location")
-
-    if snapshot_path:
-        if snapshot_path.startswith("http://") or snapshot_path.startswith("https://"):
-            snapshot = snapshot_path
-        else:
-            snapshot = WEB_ARCHIVE_ROOT + snapshot_path
-
-        print(f"[IA] Snapshot URL: {snapshot}")
-        if sleep_seconds > 0:
+            print(f"[IA] Snapshot URL: {snapshot}")
             time.sleep(sleep_seconds)
-        return snapshot
+            return snapshot
 
-    print("[IA] No snapshot location found in headers; falling back to live URL.")
+        print("[IA] No snapshot location found in headers.")
+        if attempt < retries:
+            print("[IA] Retrying...")
+            time.sleep(3)
+
+    print("[IA] Failed to obtain snapshot. Falling back to live URL.")
     return live_url
