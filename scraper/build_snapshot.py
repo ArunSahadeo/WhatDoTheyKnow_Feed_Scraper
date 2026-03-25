@@ -12,7 +12,6 @@ from scraper.fetch_rss import fetch_rss_entries
 from scraper.parse_request_page import scrape_request_page
 from scraper.internet_archive import snapshot_url
 
-
 def build_snapshot():
     os.makedirs("snapshots", exist_ok=True)
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d")
