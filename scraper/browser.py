@@ -7,7 +7,6 @@ app = QApplication.instance() or QApplication(sys.argv)
 
 class Browser(QWebEngineView):
     def __init__(self, url):
-        #self.app = QApplication(sys.argv)
         QWebEngineView.__init__(self)
         self.html = None
         self.final_url = None
@@ -22,5 +21,4 @@ class Browser(QWebEngineView):
     def _storeHtml(self, html):
         self.html = html
         self.final_url = self.page().url().toString()
-        #self.app.quit()
         app.quit()
