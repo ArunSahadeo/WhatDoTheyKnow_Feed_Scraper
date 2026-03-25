@@ -19,10 +19,26 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt && sudo apt install -y libegl1
+        run: pip install -r requirements.txt
+
+      - name: Install QT dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+          libxcb-cursor0 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-xinerama0 \
+          libxcb-xfixes0 \
+          libegl1 \
+          libgl1 \
+          xvfb
 
       - name: Run scraper
-        run: python -u -m scraper.build_snapshot
+        run: xvfb-run --auto-servernum python -u -m scraper.build_snapshot
 
       - name: Commit results
         run: |
